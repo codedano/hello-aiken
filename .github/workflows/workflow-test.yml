@@ -1,0 +1,69 @@
+name: Aiken Automated Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      challengeId:
+        description: Challenge ID
+        required: true
+        type: string
+      webhook_url:
+        description: Optional override webhook URL (else uses secret CODEDANO_WEBHOOK_URL)
+        required: false
+        type: string
+
+jobs:
+  aiken-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Aiken
+        uses: aiken-lang/setup-aiken@v1
+        with:
+          version: v1.0.28-alpha
+
+      - name: Run aiken check and capture output
+        id: check
+        shell: bash
+        run: |
+          set +e
+          OUTFILE="aiken_output.log"
+          OUTPUT=$( (aiken check) 2>&1 )
+          STATUS=$?
+          if [ $STATUS -eq 0 ]; then
+            OUTPUT="$OUTPUT
+All tests passed"
+          fi
+          printf "%s" "$OUTPUT" > "$OUTFILE"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+      - name: POST results to webhook
+        env:
+          SECRET_KEY: ${{ secrets.CODEDANO_WEBHOOK_SECRET }}
+          CHALLENGE_ID: ${{ inputs.challengeId }}
+          GITHUB_USERNAME: ${{ github.actor }}
+          WEBHOOK_URL_INPUT: ${{ inputs.webhook_url }}
+          WEBHOOK_URL_SECRET: ${{ secrets.CODEDANO_WEBHOOK_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          WEBHOOK_URL="${WEBHOOK_URL_INPUT:-${WEBHOOK_URL_SECRET:-}}"
+          if [ -z "${SECRET_KEY:-}" ]; then
+            echo "Missing secret CODEDANO_WEBHOOK_SECRET" >&2
+            exit 1
+          fi
+          if [ -z "${WEBHOOK_URL:-}" ]; then
+            echo "Provide workflow input webhook_url or set secret CODEDANO_WEBHOOK_URL" >&2
+            exit 1
+          fi
+          jq -n \
+            --arg secretKey "$SECRET_KEY" \
+            --arg challengeId "$CHALLENGE_ID" \
+            --arg githubUsername "$GITHUB_USERNAME" \
+            --rawfile output aiken_output.log \
+            '{secretKey:$secretKey, challengeId:$challengeId, githubUsername:$githubUsername, output:$output}' \
+            > payload.json
+          curl -sS -X POST -H 'Content-Type: application/json' --data @payload.json "$WEBHOOK_URL"

@@ -36,7 +36,7 @@ jobs:
             echo "fallback=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Fallback: Build Aiken from source
+      - name: Fallback Build Aiken from source
         if: steps.check-setup.outputs.fallback == 'true'
         run: |
           cargo install --git https://github.com/aiken-lang/aiken --tag v1.1.19

@@ -21,8 +21,9 @@ validator hello_world {
     tx: Transaction,
   ) {
 
+    // insert your logic here.
     False
-  
+
   }
 
   else(_) {

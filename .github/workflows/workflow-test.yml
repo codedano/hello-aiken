@@ -20,12 +20,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Aiken
+      - name: Try Setup Aiken (prebuilt binary)
+        id: setup
         uses: aiken-lang/setup-aiken@v1
         with:
-          version: v1.0.28-alpha
+          version: v1.1.19
 
-      - name: Run aiken check and capture output
+      - name: Verify Aiken installation
+        id: check-setup
+        run: |
+          if ! command -v aiken >/dev/null; then
+            echo "Aiken not found; fallback to source install"
+            echo "fallback=true" >> $GITHUB_OUTPUT
+          else
+            echo "fallback=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fallback: Build Aiken from source
+        if: steps.check-setup.outputs.fallback == 'true'
+        run: |
+          cargo install --git https://github.com/aiken-lang/aiken --tag v1.1.19
+
+      - name: Run Aiken check and capture output
         id: check
         shell: bash
         run: |

@@ -66,10 +66,6 @@ jobs:
         run: |
           set -euo pipefail
           WEBHOOK_URL="${WEBHOOK_URL_INPUT:-${WEBHOOK_URL_SECRET:-}}"
-          if [ -z "${SECRET_KEY:-}" ]; then
-            echo "Missing secret CODEDANO_WEBHOOK_SECRET" >&2
-            exit 1
-          fi
           if [ -z "${WEBHOOK_URL:-}" ]; then
             echo "Provide workflow input webhook_url or set secret CODEDANO_WEBHOOK_URL" >&2
             exit 1
